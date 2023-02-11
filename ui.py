@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter import ttk
 
+from gologin.gologinSelenium import start_process, driver
+
 screen=Tk()
 screen.title('Reward Tool')
 screen.geometry('980x620')
@@ -136,10 +138,13 @@ def read_file_email():
 def start():
     print('START')
     # read_file_email()
+    start_process(driver=driver, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041",
+              username="CaydanceSatava@hotmail.com", password="i6tWzwpuNY")
 
 def stop():
     print('STOP')
     print(table_mails)
+    
 
 def export_result():
     print("RESULT")
