@@ -82,8 +82,8 @@ def start_process(driver: webdriver.Chrome, reward_link: str, username: str, pas
         print("Error to login")
 
 
-# start_process(driver=driver, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041",
-#               username="CaydanceSatava@hotmail.com", password="i6tWzwpuNY")
+start_process(driver=driver, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041",
+              username="CaydanceSatava@hotmail.com", password="i6tWzwpuNY")
 
 
 # assert "Python" in driver.title
