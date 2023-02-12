@@ -77,8 +77,8 @@ class GologinProfile(object):
                     "mode": "http",
                     "host": proxy['ip'],
                     "port": int(proxy['port']),
-                    # "username": "",
-                    # "password": ""
+                    "username": "",
+                    "password": ""
                 },
                 "storage": {
                     "local": True,
