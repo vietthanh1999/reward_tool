@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import ttk
+from threading import *
 from runchrome import start_process, close_process
 
 screen=Tk()
@@ -122,23 +123,31 @@ def read_file_email():
     file = open(file_mail_entry.get())
     for line in file:
         mail_read_list = line.split('|')
-        index = 0
-        temp_list = []
-        for mail in mail_read_list:
-            temp_list.append(mail)
-            if (index % 2 != 0 and len(temp_list) == 2):
-                table_mails.append(temp_list)
-                table.insert(parent='',index='end',iid = count, text='', values=(count + 1, temp_list[0], temp_list[1]))
-                count += 1
-                temp_list = []
+        table_mails.append(mail_read_list)
+        table.insert(parent='',index='end',iid = count, text='', values=(count + 1, mail_read_list[0], mail_read_list[1]))
+        count += 1
 
-            index = index + 1
+        # index = 0
+        # temp_list = []
+        # for mail in mail_read_list:
+        #     temp_list.append(mail)
+        #     if (index % 2 != 0 and len(temp_list) == 2):
+        #         table_mails.append(temp_list)
+        #         table.insert(parent='',index='end',iid = count, text='', values=(count + 1, temp_list[0], temp_list[1]))
+        #         count += 1
+        #         temp_list = []
+
+        #     index = index + 1
 
 def start():
     print('START')
     # read_file_email()
-    start_process(reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041",
-              username="CaydanceSatava@hotmail.com", password="i6tWzwpuNY")
+    start_process(reward_link=link_reward_entry.get(), mail_account_info=table_mails[1])
+
+def threading():
+    # Call work function
+    t1=Thread(target=start)
+    t1.start()
 
 def stop():
     print('STOP')
@@ -157,7 +166,7 @@ def update_record():
    table.item(selected_item, text="blub", values=("1", "foo", "bar"))
 
 # ============BUTTON===============
-start_button = Button(Input_frame, text = "Start", bg='green', activeforeground='white', command= start)
+start_button = Button(Input_frame, text = "Start", bg='green', activeforeground='white', command= threading)
 start_button.place(relx=.1, rely=0.9, relwidth=.2)
 
 stop_button = Button(Input_frame, text = "Stop", bg='red', activeforeground='white', command= stop)
