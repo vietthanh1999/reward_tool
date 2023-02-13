@@ -227,16 +227,17 @@ class GoLogin(object):
             return proxy.get('mode', 'http')+'://'+proxy.get('username', '')+':'+proxy.get('password')+'@'+proxy.get('host', '')+':'+str(proxy.get('port', 80))
 
     def getTimeZone(self):
-        proxy = self.proxy
-        if proxy:
-            proxies = {
-                'http': self.formatProxyUrlPassword(proxy),
-                'https': self.formatProxyUrlPassword(proxy)
-            }
-            data = requests.get('https://time.gologin.com', proxies=proxies)
-        else:
-            data = requests.get('https://time.gologin.com')
-        return json.loads(data.content.decode('utf-8'))
+        # proxy = self.proxy
+        # if proxy:
+        #     proxies = {
+        #         'http': self.formatProxyUrlPassword(proxy),
+        #         'https': self.formatProxyUrlPassword(proxy)
+        #     }
+        #     data = requests.get('https://time.gologin.com', proxies=proxies)
+        # else:
+        #     data = requests.get('https://time.gologin.com')
+        # return json.loads(data.content.decode('utf-8'))
+        return {"ip":"51.15.54.152","timezone":"Europe/Amsterdam","accuracy":100,"ll":["52.3824","4.8995"],"country":"NL","city":"Haarlem","stateProv":"North Holland","proxyType":""}
 
     def getProfile(self, profile_id=None):
         profile = self.profile_id if profile_id == None else profile_id
