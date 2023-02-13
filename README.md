@@ -1,3 +1,15 @@
+Tao moi truong ao => python -m venv venv
+
+ON => venv\Scripts\activate
+
+OFF => venv\Scripts\deactivate
+
+pip list => xem cac thu vien da cai dat
+
+pip freeze > requirements.txt
+
+python -m pip install -r requirements.txt
+
 # pygologin
  REST API provides programmatic access to GoLogin App. Create a new browser profile, get a list of all browser profiles, add a browser profile and running 
 
