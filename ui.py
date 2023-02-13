@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from threading import *
 from runchrome import start_process, close_process
+from gologinprofile import GologinProfile
 
 screen=Tk()
 screen.title('Reward Tool')
@@ -44,7 +45,7 @@ Input_frame.place(relx=0.6, y=32, relheight=.8, relwidth=.36)
 file_mail = Label(Input_frame, text="File mail: ")
 file_mail.place(x=16, y=30)
 file_mail_entry = Entry(Input_frame)
-file_mail_entry.insert(0, r"C:\Users\Thanh\Desktop\gologin\toolReg\emails.txt")
+file_mail_entry.insert(0, r".\emails.txt")
 file_mail_entry.place(x=16, y=50, relwidth=0.8)
 
 link_reward= Label(Input_frame, text="Link reward: ")
@@ -138,15 +139,20 @@ def read_file_email():
         #         temp_list = []
 
         #     index = index + 1
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2M2U4ZTE1ZmVhMGEzZGU2Y2FiMTJiMDQiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2M2U4ZTFiMTkyYjg1OWFhNWNkNjhiODUifQ.qJGQvR_SnNJN6NUQPc9XdLBVlQrDg27f88u7akj1jVg'
 
-def start():
+def start(gp:GologinProfile):
     print('START')
     # read_file_email()
-    start_process(reward_link=link_reward_entry.get(), mail_account_info=table_mails[1])
+    start_process(gp, token, reward_link=link_reward_entry.get(), mail_account_info=table_mails[1])
 
 def threading():
     # Call work function
-    t1=Thread(target=start)
+    gp = GologinProfile({'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2M2U4ZTE1ZmVhMGEzZGU2Y2FiMTJiMDQiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2M2U4ZTFiMTkyYjg1OWFhNWNkNjhiODUifQ.qJGQvR_SnNJN6NUQPc9XdLBVlQrDg27f88u7akj1jVg',
+                    'proxy_api_link': 'https://tq.lunaproxy.com/getflowip?neek=1021070&num=10&type=2&sep=1&regions=us&ip_si=1&level=1&sb=',
+                    'max_mail_used': 2
+                    })
+    t1=Thread(target=start,args=[gp])
     t1.start()
 
 def stop():
