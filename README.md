@@ -1,3 +1,5 @@
+Open the Command Palette (Ctrl+Shift+P), then select the Python: Select Interpreter. From the list, select the virtual environment in your project folder that starts with .env.
+
 Tao moi truong ao => python -m venv venv
 
 ON => venv\Scripts\activate
