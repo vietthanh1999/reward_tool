@@ -11,11 +11,13 @@ from selenium.common.exceptions import TimeoutException
 from gologin import GoLogin
 from gologinprofile import GologinProfile
 from gologin import getRandomPort
+from globaldata import thread_data_list
+
 
 from mail import get_code_from_mailnesia
 from sms import Sms
 
-
+timeout = 0
 delay_time = 5
 sleep_affter_click = 3
 
@@ -26,10 +28,8 @@ elif platform == "darwin":
 elif platform == "win32":
     chrome_driver_path = "./chromedriver.exe"
 
-drivers = []
-
 # Code open link
-def start_process(gp: GologinProfile, token: str, reward_link: str, mail_account_info = []):
+def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: str, thread_data_index: int,mail_account_info = []):
     profile_id = gp.create_profile()
     gl = GoLogin({'token': token, 'profile_id': profile_id, 'port': getRandomPort()})
     debugger_address = gl.start()
@@ -37,21 +37,22 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, mail_account
     chrome_options = Options()
     chrome_options.add_experimental_option("debuggerAddress", debugger_address)
     driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
-    drivers.append(driver)
+
+    thread_data_list[thread_data_index]['driver'] = driver
 
     driver.get(reward_link)
     # try:
     print("Wait the page reward open!")
-    signUpButton: WebElement = WebDriverWait(driver, delay_time).until(
+    signUpButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'start-earning-rewards-link')))
     print("Page is ready!")
-    WebDriverWait(driver, delay_time).until(
+    WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable(signUpButton))
     print("Sign Up button is ready!")
     signUpButton.click()
 
     print("Entering email...")
-    emailInput: WebElement = WebDriverWait(driver, delay_time).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
+    emailInput: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
     time.sleep(3)
     emailInput.send_keys(mail_account_info[0])
     time.sleep(sleep_affter_click)
@@ -61,7 +62,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, mail_account
 
     time.sleep(sleep_affter_click)
     print("Entering password...")
-    passwordInput: WebElement = WebDriverWait(driver, delay_time).until(EC.presence_of_element_located((By.NAME, 'passwd')))
+    passwordInput: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'passwd')))
     time.sleep(sleep_affter_click)
     passwordInput.send_keys(mail_account_info[1])
     time.sleep(sleep_affter_click)
@@ -132,34 +133,34 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, mail_account
         driver.close()
 
     print('=======reward=======')
-    confirmRewardButton: WebElement = WebDriverWait(driver, delay_time).until(
+    confirmRewardButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-review-confirm')))
-    WebDriverWait(driver, delay_time).until(EC.element_to_be_clickable(confirmRewardButton))
+    WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(confirmRewardButton))
     print("Reward button is ready!")
     confirmRewardButton.click()
-    sms = Sms({'token': 'eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTMxOTQ1MTEsImlhdCI6MTY2MTY1ODUxMSwicmF5IjoiNmM3MzhlZTI1OTA2N2RlNjY5M2U4YTQwZGY0NDgzNDAiLCJzdWIiOjEyMjQ1NzR9.aDurMb5mPDBsTJAEmKSpjfBIRx8xsU5MU8-W-_TchLr1r2bEOjTXx6rNRVtLgXjba7h8VYGCq6EuisPFQy4IsWuanlFgqsv8eHkkmdBV9GyAn-iRbpwsh9YSP2yTZuxzSAhNXtABcORlxzWKjmSyPCNDv4wLpe4tcVUBSIFBzd5QlfiAXxpIPRmnLDamIW5D1cT9t6k_wwaWqFauvPiaUMe_mI-keF_GTV1zFYkukexB4EIucJmbEVuTQ_oXQCnUzRXWa8bi7gTEAgjmdWCm3xU53qoDvsHhtjVmS1Iu1rLbpnEwHJJUiAafQaY_c0IiZQtFDpvdWDBSvN4CK0RfEg'})
+    sms = Sms({'token': sms_token})
     phoneRes = sms.order_5sim()
 
-    phoneInput: WebElement = WebDriverWait(driver, delay_time).until(
+    phoneInput: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-fullnumber')))
     print("Phone input is ready!")
     phoneInput.send_keys(phoneRes.get('phone', '').replace('+1', ''))
 
-    sendButton: WebElement = WebDriverWait(driver, delay_time).until(
+    sendButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-validate')))
     print("Send OTP button is ready!")
     sendButton.click()
 
     code = sms.get_code_5sim(phoneRes.get('id', ''))
 
-    codeInput: WebElement = WebDriverWait(driver, delay_time).until(
+    codeInput: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-code')))
     print("Enter your 6-digit code:")
     codeInput.send_keys(code)
 
-    completeMyOrderBtn: WebElement = WebDriverWait(driver, delay_time).until(
+    completeMyOrderBtn: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-confirm')))
-    WebDriverWait(driver, delay_time).until(EC.element_to_be_clickable(completeMyOrderBtn))
+    WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(completeMyOrderBtn))
     print("completeMyOrderBtn is ready!")
     completeMyOrderBtn.click()
 
@@ -189,7 +190,7 @@ def get_verify_code(mail: str, password: str, mail_verify: str):
         chrome_options.add_experimental_option("debuggerAddress", debugger_address)
         driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
         driver.get('https://outlook.live.com/owa/?nlp=1')
-        WebDriverWait(driver, delay_time).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
 
         driver.find_element(By.NAME, 'loginfmt').send_keys(mail)
         time.sleep(2)
@@ -255,10 +256,10 @@ def get_verify_code(mail: str, password: str, mail_verify: str):
             driver.find_element(By.ID, 'iVerifyCodeAction').click()
             # Chờ cho đến khi có
         if(len(driver.find_elements(By.ID, 'idSIButton9'))):
-            yButton: WebElement = WebDriverWait(driver, delay_time).until(EC.presence_of_element_located((By.ID, 'idSIButton9')))
+            yButton: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.ID, 'idSIButton9')))
             time.sleep(3)
             yButton.click()
-        WebDriverWait(driver, delay_time).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[role="listbox"]')))
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[role="listbox"]')))
         driver.find_element(By.ID, 'Pivot84-Tab1').click()
         time.sleep(3)
        
@@ -288,29 +289,25 @@ def get_phone_5sim():
     driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
     driver.get('https://5sim.net/')
 
-    loginATag: WebElement = WebDriverWait(driver, delay_time).until(
+    loginATag: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.CLASS_NAME, 'ng-binding')))
     print("Reward button is ready!")
     loginATag.click()
 
-    googleAuthButton: WebElement = WebDriverWait(driver, delay_time).until(
+    googleAuthButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'google_auth')))
     print("Google_auth button is ready!")
     googleAuthButton.click()
 
-    googleAuthButton: WebElement = WebDriverWait(driver, delay_time).until(
+    googleAuthButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-fullnumber')))
     print("Google_auth button is ready!")
     googleAuthButton.click()
 
-    googleAuthButton: WebElement = WebDriverWait(driver, delay_time).until(
+    googleAuthButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-validate')))
     print("Google_auth button is ready!")
     googleAuthButton.click()
-
-def close_process():
-    for driver_item in drivers: 
-        driver_item.close()
 # assert "Python" in driver.title
 # time.sleep(3)
 # driver.close()
@@ -329,5 +326,5 @@ gp = GologinProfile({'token': token,
 # start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
 # mail_account_info=['domekIvyanne@outlook.com', 'P7C0vUrEfAn', 'jamesHarrison175@hotmail.com', 'TXdqs19oy13WZ', 'jamesharrison175@mailnesia.com'])
 
-start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
-mail_account_info=['lemmerkhayq@outlook.com', 'Beta123ona.', 'kellyBurgos187@hotmail.com', 'AVwsd17h17MV', 'kellyburgos187@mailnesia.com'])
+# start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
+# mail_account_info=['lemmerkhayq@outlook.com', 'Beta123ona.', 'kellyBurgos187@hotmail.com', 'AVwsd17h17MV', 'kellyburgos187@mailnesia.com'])
