@@ -1,12 +1,13 @@
 import logging
 import time
+import ctypes
+import threading
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
-from threading import *
 from runchrome import start_process
 from gologinprofile import GologinProfile
 from datetime import date
-from globaldata import thread_data_list
+from globaldata import thread_data_list, main_thread
 
 
 logging.basicConfig(filename='log-'+str(date.today())+'.txt', format="%(asctime)s %(message)s")
@@ -193,6 +194,7 @@ def update_stop_button(state):
         stop_button.configure(state='normal', bg='red', activeforeground='white')
 
 
+
 def start(gp:GologinProfile, thread_data_index: int, mail):
     print('START')
     try:
@@ -201,13 +203,41 @@ def start(gp:GologinProfile, thread_data_index: int, mail):
     except:
         # set trang thai cho row
         update_record(0, "Lỗi")
-    finally:
-        if thread_data_list[thread_data_index]:
-            if thread_data_list[thread_data_index]['driver']:
-                thread_data_list[thread_data_index]['driver'].close()
-            if thread_data_list[thread_data_index]['thread']:
-                thread_data_list[thread_data_index]['thread'].join()
-            thread_data_list[thread_data_index] = None
+        print('errrorrr====')
+    # finally:
+    #     if thread_data_list[thread_data_index]:
+    #         if thread_data_list[thread_data_index]['driver']:
+    #             thread_data_list[thread_data_index]['driver'].close()
+    #         if thread_data_list[thread_data_index]['thread']:
+    #             thread_data_list[thread_data_index]['thread'].join()
+    #         thread_data_list[thread_data_index] = None
+
+class StartThreadWithException(threading.Thread):
+    def __init__(self, gp, thread_data_index, mail):
+        threading.Thread.__init__(self)
+        self.gp = gp
+        self.thread_data_index = thread_data_index
+        self.mail = mail
+
+    def run(self):
+        start(self.gp, self.thread_data_index, self.mail)
+
+    def get_id(self):
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+            
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        print('Exception raise')
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
+
 
 def update_threading():
     gp = GologinProfile({'token': gologin_token_entry.get(),
@@ -239,7 +269,8 @@ def update_threading():
                         print(mail_data)
                         mail_data[5] = 'starting'
                         update_record(mail_data[6], 'starting')
-                        new_thread = Thread(target=start,args=[gp, thread_data_index, mail_data])
+                        new_thread = StartThreadWithException(gp, thread_data_index, mail_data)
+                        # new_thread = Thread(target=start,args=[gp, thread_data_index, mail_data])
                         new_thread.start()
                         thread_data_list[thread_data_index] = {'thread': new_thread, 'driver': None}
                         break
@@ -247,11 +278,34 @@ def update_threading():
             break
         time.sleep(3)
     messagebox.showinfo("Xong")
+class UpdateThreadWithException(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
 
-def threading():
+    def run(self):
+        while True:
+            update_threading()
+
+    def get_id(self):
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+            
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        print('Exception raise')
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
+def threading1():
     update_start_button('disabled')
     update_stop_button('active')
-    main_thread=Thread(target=update_threading,args=[])
+    global main_thread
+    main_thread=UpdateThreadWithException()
     main_thread.start()
 
 
@@ -262,16 +316,22 @@ def open_email_file():
     read_file_email()
 
 def stop():
-    for data in thread_data_list:
-        if data:
+    print(thread_data_list)
+    for i in range(10):
+        if thread_data_list[i]:
             print('=================== STOP ================')
-            print(data)
+            print(thread_data_list[i])
             print('=================== STOP ================')
-            if data['driver']:
-                data['driver'].close()
-            if data['thread']:
-                data['thread'].kill()
-            data = None
+            if thread_data_list[i]['driver']:
+                # thread_data_list[i]['driver'].close()
+                thread_data_list[i]['driver'].quit()
+            if thread_data_list[i]['thread']:
+                thread_data_list[i]['thread'].raise_exception()
+            thread_data_list[i] = None
+    if main_thread:
+        print('stop main thread')
+        main_thread.raise_exception()
+    print(thread_data_list)
             
     update_start_button('active')
     # update_stop_button('disabled')
@@ -288,7 +348,7 @@ def update_record(index: int, status: str):
 open_file = Button(Input_frame, text = "Mở file email", bg='#f2f2f2', activeforeground='white', command= open_email_file)
 open_file.place(relx=.605, y=46, relwidth=.23)
 
-start_button = Button(Input_frame, text = "Start", bg='green', activeforeground='white', command= threading)
+start_button = Button(Input_frame, text = "Start", bg='green', activeforeground='white', command= threading1)
 start_button.place(relx=.1, rely=0.9, relwidth=.2)
 
 stop_button = Button(Input_frame, text = "Stop", bg='#c4c4c4', activeforeground='black', state='disabled',command= stop)
