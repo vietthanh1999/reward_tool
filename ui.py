@@ -404,7 +404,6 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
     signUpButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'start-earning-rewards-link')))
     print("Page is ready!")
-    update_record(mail_account_info[6], 'Đăng ký')
     WebDriverWait(driver, timeout).until(
         EC.element_to_be_clickable(signUpButton))
     print("Sign Up button is ready!")
@@ -460,7 +459,8 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
             retry_time = retry_time + 1
 
         if (allow_continue == False):
-            update_record(mail_account_info[6], 'Nhập pass mail chính')
+            update_record(mail_account_info[6], 'Lỗi: Không xác định được phần tử tiếp theo')
+            logging.error('Lỗi: Không xác định được phần tử tiếp theo' + str(mail_account_info))
             print('false at allow_continue')
             raise('false at allow_continue')
             
@@ -469,6 +469,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
             driver.find_elements(By.ID, 'iLandingViewAction')[0].click()
             time.sleep(3)
 
+        update_record(mail_account_info[6], 'Chờ lấy code từ mail phụ')
         if (step == 'staysigned'):
             print(len(driver.find_elements(By.ID, 'idSIButton9')))
             driver.find_elements(By.ID, 'idSIButton9')[0].click()
@@ -485,6 +486,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
         start_verify_time = int(time.time())
         print('=======GET CODE=======')
         if len(driver.find_elements(By.ID, 'redeem-checkout-review-confirm')) == 0:
+            update_record(mail_account_info[6], 'Get code từ mail phụ')
             code = get_verify_code(gp, token, mail_account_info[2], mail_account_info[3], mail_account_info[4], mail_account_info)
             driver.find_element(By.ID, 'iOttText').send_keys(code)
             time.sleep(3)
@@ -492,17 +494,21 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
     # TODO: Xử lý reward
     if len(driver.find_elements(By.CSS_SELECTOR, '.pull-left > .win-color-fg-alert')) != 0: 
         print('Khong du diem')
-        driver.close()
+        update_record(mail_account_info[6], 'Không đủ điểm')
+        # TODO: xuất giá trị ra file
+        driver.quit()
 
     print('=======reward=======')
+    update_record(mail_account_info[6], 'Chờ reward')
     confirmRewardButton: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-review-confirm')))
     WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(confirmRewardButton))
     print("Reward button is ready!")
     confirmRewardButton.click()
     sms = Sms({'token': sms_token})
+    update_record(mail_account_info[6], 'Chờ lấy sim 5sim')
     phoneRes = sms.order_5sim()
-
+    update_record(mail_account_info[6], 'reward')
     phoneInput: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-fullnumber')))
     print("Phone input is ready!")
@@ -512,18 +518,18 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-validate')))
     print("Send OTP button is ready!")
     sendButton.click()
-
+    update_record(mail_account_info[6], 'Chờ lấy code 5sim')
     code = sms.get_code_5sim(phoneRes.get('id', ''))
 
     codeInput: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-code')))
     print("Enter your 6-digit code:")
     codeInput.send_keys(code)
-
     completeMyOrderBtn: WebElement = WebDriverWait(driver, timeout).until(
         EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-confirm')))
     WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(completeMyOrderBtn))
     print("completeMyOrderBtn is ready!")
+    update_record(mail_account_info[6], 'Reward...')
     completeMyOrderBtn.click()
 
         # elif ()
@@ -584,7 +590,7 @@ def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, ma
         elif len(driver.find_elements(By.ID, 'passwordError')) != 0:
             # TODO: Xử lý sai pass
             print('Sai password')
-            update_record(mail_account_info[6], 'Sai pass mail phụ')
+            update_record(mail_account_info[6], 'Lỗi: Sai pass mail phụ')
             # driver.close()
             raise 'Sai password'
         time.sleep(6)
@@ -615,6 +621,7 @@ def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, ma
     start_verify_time = int(time.time())
     update_record(mail_account_info[6], 'Chờ lấy code từ mailnesia')
     code = get_code_from_mailnesia(mail_verify, 0)
+    update_record(mail_account_info[6], 'Code mailnesia: ' + str(code))
     if  len(driver.find_elements(By.ID, 'iOttText')):
         time.sleep(3)
         driver.find_element(By.ID, 'iOttText').send_keys(code)
@@ -643,6 +650,8 @@ def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, ma
                 return code
         time.sleep(6)
         retry_time = retry_time+1
+    update_record(mail_account_info[6], 'Lỗi: không lấy được code từ mail phụ')
+    driver.quit()
     raise('Can not get code from mail hotmail')
 
 # DomekIvyanne@outlook.com|P7C0vUrEfAn|JamesHarrison175@hotmail.com|TXdqs19oy13WZ|jamesharrison175@mailnesia.com
