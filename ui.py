@@ -202,8 +202,7 @@ def start(gp:GologinProfile, thread_data_index: int, mail):
         # set trang thai cho row
     except:
         # set trang thai cho row
-        update_record(0, "Lỗi")
-        print('errrorrr====')
+        update_record(mail[0], "Lỗi")
     # finally:
     #     if thread_data_list[thread_data_index]:
     #         if thread_data_list[thread_data_index]['driver']:
@@ -232,7 +231,7 @@ class StartThreadWithException(threading.Thread):
     def raise_exception(self):
         thread_id = self.get_id()
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
-              ctypes.py_object(SystemExit))
+            ctypes.py_object(SystemExit))
         print('Exception raise')
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
@@ -272,7 +271,7 @@ def update_threading():
                         new_thread = StartThreadWithException(gp, thread_data_index, mail_data)
                         # new_thread = Thread(target=start,args=[gp, thread_data_index, mail_data])
                         new_thread.start()
-                        thread_data_list[thread_data_index] = {'thread': new_thread, 'driver': None}
+                        thread_data_list[thread_data_index] = {'thread': new_thread, 'driver': None, 'row': mail_data[6]}
                         break
         if running == 0 and mail_data == None:
             break
@@ -319,14 +318,18 @@ def stop():
     print(thread_data_list)
     for i in range(10):
         if thread_data_list[i]:
-            print('=================== STOP ================')
-            print(thread_data_list[i])
-            print('=================== STOP ================')
-            if thread_data_list[i]['driver']:
-                # thread_data_list[i]['driver'].close()
-                thread_data_list[i]['driver'].quit()
-            if thread_data_list[i]['thread']:
-                thread_data_list[i]['thread'].raise_exception()
+            try:
+                print('=================== STOP ================')
+                print(thread_data_list[i])
+                print('=================== STOP ================')
+                if thread_data_list[i]['driver']:
+                    # thread_data_list[i]['driver'].close()
+                    thread_data_list[i]['driver'].quit()
+                if thread_data_list[i]['thread']:
+                    thread_data_list[i]['thread'].raise_exception()
+            except:
+                print('Stop thread')
+            update_record(thread_data_list[i]['row'], 'stop')
             thread_data_list[i] = None
     if main_thread:
         print('stop main thread')
@@ -339,7 +342,7 @@ def stop():
 
 def export_result():
     print("RESULT")
-    update_record()
+    # update_record()
 
 def update_record(index: int, status: str):
    table.set(index, column='3', value=status)
