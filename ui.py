@@ -196,13 +196,12 @@ def update_stop_button(state):
 
 
 def start(gp:GologinProfile, thread_data_index: int, mail):
-    print('START')
     try:
         start_process(gp, token=gologin_token_entry.get(), reward_link=link_reward_entry.get(), sms_token=five_sim_token_entry.get(), thread_data_index=thread_data_index, mail_account_info=mail)
         # set trang thai cho row
     except:
         # set trang thai cho row
-        update_record(mail[0], "Lỗi")
+        update_record(mail[6], "Lỗi")
     # finally:
     #     if thread_data_list[thread_data_index]:
     #         if thread_data_list[thread_data_index]['driver']:
@@ -232,10 +231,8 @@ class StartThreadWithException(threading.Thread):
         thread_id = self.get_id()
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
             ctypes.py_object(SystemExit))
-        print('Exception raise')
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure')
 
 
 def update_threading():
@@ -246,8 +243,6 @@ def update_threading():
     # Kiểm tra xem số lượng thread đang chạy có đủ chưa, nếu chưa đủ thì start tiếp, nếu đủ rồi thì chờ
     while (True):
         threadNumber = int(variable_thread.get())
-        print(threadNumber)
-        print(thread_data_list)
         running = 0
         for t in thread_data_list:
             if t:
@@ -265,7 +260,6 @@ def update_threading():
                     # Lấy ra vị trí chưa chạy thread để chạy mới 1 thread
                     if thread_data_list[thread_data_index] == None:
                         print('================== RUN MAIL ====================')
-                        print(mail_data)
                         mail_data[5] = 'starting'
                         update_record(mail_data[6], 'starting')
                         new_thread = StartThreadWithException(gp, thread_data_index, mail_data)
@@ -277,6 +271,8 @@ def update_threading():
             break
         time.sleep(3)
     messagebox.showinfo("Xong")
+    if main_thread:
+        main_thread.raise_exception()
 class UpdateThreadWithException(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -296,16 +292,18 @@ class UpdateThreadWithException(threading.Thread):
         thread_id = self.get_id()
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
               ctypes.py_object(SystemExit))
-        print('Exception raise')
         if res > 1:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
-            print('Exception raise failure')
 def threading1():
-    update_start_button('disabled')
-    update_stop_button('active')
-    global main_thread
-    main_thread=UpdateThreadWithException()
-    main_thread.start()
+    try:
+        update_start_button('disabled')
+        update_stop_button('active')
+        global main_thread
+        main_thread=UpdateThreadWithException()
+        main_thread.start()
+    except:
+        if main_thread:
+            main_thread.raise_exception()
 
 
 def open_email_file():
@@ -315,13 +313,9 @@ def open_email_file():
     read_file_email()
 
 def stop():
-    print(thread_data_list)
     for i in range(10):
         if thread_data_list[i]:
             try:
-                print('=================== STOP ================')
-                print(thread_data_list[i])
-                print('=================== STOP ================')
                 if thread_data_list[i]['driver']:
                     # thread_data_list[i]['driver'].close()
                     thread_data_list[i]['driver'].quit()
@@ -334,7 +328,6 @@ def stop():
     if main_thread:
         print('stop main thread')
         main_thread.raise_exception()
-    print(thread_data_list)
             
     update_start_button('active')
     # update_stop_button('disabled')
