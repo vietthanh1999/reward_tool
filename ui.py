@@ -99,7 +99,7 @@ link_reward_entry.place(x=16, y=100, relwidth=0.8)
 gologin_token = Label(Input_frame, text="Gogin token: ")
 gologin_token.place(x=16, y=130)
 gologin_token_entry = Entry(Input_frame)
-gologin_token_entry.insert(0, r"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2M2U4ZTE1ZmVhMGEzZGU2Y2FiMTJiMDQiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2M2U4ZTFiMTkyYjg1OWFhNWNkNjhiODUifQ.qJGQvR_SnNJN6NUQPc9XdLBVlQrDg27f88u7akj1jVg")
+gologin_token_entry.insert(0, r"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2M2YwZjc2MDc1ZmE4OTc1OGM5NjZmNTMiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2M2YwZjc5MDk1OWZiMDBmZDEyYjhhOWIifQ.R3jDcI0vVZD1yL-OC0RhbURc-4KCdrNw7kzG6g3ZOZk")
 gologin_token_entry.place(x=16, y=150, relwidth=0.8)
 
 five_sim_token = Label(Input_frame, text="5Sim token: ")
