@@ -505,6 +505,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
         if len(driver.find_elements(By.ID, 'iSelectProofError')):
             # driver.find_element(By.ID, 'iSelectProofAction').click()
             update_record(mail_account_info[6],  'Requested too many codes today')
+            thread_data_list[thread_data_index]['thread'].raise_exception()
             driver.quit()
 
         start_verify_time = int(time.time())
