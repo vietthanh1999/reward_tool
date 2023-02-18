@@ -543,15 +543,18 @@ class GoLogin(object):
     def delete_profile_folder(self):
         folder = self.profile_path
         self.delete()
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+        try:
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+        except:
+            print('remove profile error')
 
     def delete(self, profile_id=None):
         profile = self.profile_id if profile_id == None else profile_id
@@ -631,9 +634,3 @@ def getRandomPort():
         else:
             return port
         sock.close()
-
-gl = GoLogin({
-    'profile_id': '63ed17d94925499db546302d'
-})
-
-gl.delete_profile_folder()
