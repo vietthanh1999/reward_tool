@@ -407,6 +407,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
     profile_id = gp.create_profile()
     gl = GoLogin({'token': token, 'profile_id': profile_id, 'port': getRandomPort()})
     debugger_address = gl.start()
+    print('main address: ' + str(debugger_address))
     update_record(mail_account_info[6], 'Mở Gologin')
     chrome_options = Options()
     chrome_options.add_experimental_option("debuggerAddress", debugger_address)
@@ -684,7 +685,8 @@ def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, ma
         time.sleep(6)
         retry_time = retry_time+1
     update_record(mail_account_info[6], 'Lỗi: không lấy được code từ mail phụ')
-    # driver.quit()
+    driver.quit()
+    gl.delete_profile_folder()
     raise('Can not get code from mail hotmail')
 
 # DomekIvyanne@outlook.com|P7C0vUrEfAn|JamesHarrison175@hotmail.com|TXdqs19oy13WZ|jamesharrison175@mailnesia.com
