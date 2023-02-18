@@ -23,8 +23,9 @@ from gologin import getRandomPort
 from mail import get_code_from_mailnesia
 from sms import Sms
 
-timeout = 0
-delay_time = 5
+import os
+
+timeout = 50
 sleep_affter_click = 3
 
 if platform == "linux" or platform == "linux2":
@@ -45,6 +46,7 @@ screen.geometry('980x620')
 
 def handle_exception(exception, value, traceback):
     logging.error(str(exception)+str(value)+str(traceback))
+    logging.fatal('')
     print(str(exception)+str(value)+str(traceback))
 # screen.report_callback_exception = handle_exception
 
@@ -103,7 +105,7 @@ gologin_token_entry.place(x=16, y=150, relwidth=0.8)
 five_sim_token = Label(Input_frame, text="5Sim token: ")
 five_sim_token.place(x=16, y=180)
 five_sim_token_entry = Entry(Input_frame)
-five_sim_token_entry.insert(0, r"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTMxOTQ1MTEsImlhdCI6MTY2MTY1ODUxMSwicmF5IjoiNmM3MzhlZTI1OTA2N2RlNjY5M2U4YTQwZGY0NDgzNDAiLCJzdWIiOjEyMjQ1NzR9.aDurMb5mPDBsTJAEmKSpjfBIRx8xsU5MU8-W-_TchLr1r2bEOjTXx6rNRVtLgXjba7h8VYGCq6EuisPFQy4IsWuanlFgqsv8eHkkmdBV9GyAn-iRbpwsh9YSP2yTZuxzSAhNXtABcORlxzWKjmSyPCNDv4wLpe4tcVUBSIFBzd5QlfiAXxpIPRmnLDamIW5D1cT9t6k_wwaWqFauvPiaUMe_mI-keF_GTV1zFYkukexB4EIucJmbEVuTQ_oXQCnUzRXWa8bi7gTEAgjmdWCm3xU53qoDvsHhtjVmS1Iu1rLbpnEwHJJUiAafQaY_c0IiZQtFDpvdWDBSvN4CK0RfEg'")
+five_sim_token_entry.insert(0, r"eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDgxODYxNzksImlhdCI6MTY3NjY1MDE3OSwicmF5IjoiYTBlNzM1YTNmOGE5ZGEzOWVhOTExNzVhZDBmYWFlMzIiLCJzdWIiOjQ0NTQ1M30.G5a5SSlFn6zFXXSX8avM0hxAQ-ZL7e_zyzjvEJ4m8OkJa6EsHf5a0OMRErEo-sgUhZy64JhlWDCjLsSWgJ4Nxec4Ni0ysnIYomWw9wYkelabCNaPlSGmrNL40K5n3mR1hUbsnJMMHubnhi5CzdqJ3N1xnzynbV1ayMLMal5X53ykiT-xJEJUB_siSJdYS7Sar80VueIOI2QGAS8GaBTc3rYrXeiHPg2qYhYUF9E1XO2KvADky9ZMCDRx8K3qtLBWHIG9GMAzx2mM7j6RFpQ3nQUXBmZECRJWPpyqSERAiPqaCiz5LnyFQccEavcHwi-AWbulbu13maWGYySsf1fJjA")
 five_sim_token_entry.place(x=16, y=200, relwidth=0.8)
 
 proxy_api_link = Label(Input_frame, text="Proxy API link: ")
@@ -122,23 +124,33 @@ mail_on_ip_entry.place(x=16, y=300, relwidth=0.2)
 # mail_on_ip_entry.place(x=16, y=150, relwidth=0.4)
 
 lb_run_mail_again = Label(Input_frame, text="Số lần chạy lại mail:")
-lb_run_mail_again.place(x=16, y=330)
+lb_run_mail_again.place(x=120, y=280)
 
 variable = StringVar(Input_frame)
 variable.set(1) # default value
 et_run_mail_again = OptionMenu(Input_frame, variable, 1, 2, 3)
-et_run_mail_again.place(x=16, y=350, relwidth=0.2)
+et_run_mail_again.place(x=120, y=300, relwidth=0.2)
 # et_run_mail_again = Entry(Input_frame)
 # et_run_mail_again.place(x=16, y=200, relwidth=0.4)
 
 lb_thread = Label(Input_frame, text="Số luồng: ")
-lb_thread.place(x=16, y=380)
+lb_thread.place(x=16, y=330)
 # et_thread = Entry(Input_frame)
 # et_thread.place(x=16, y=400, relwidth=0.4)
 variable_thread = StringVar(Input_frame)
 variable_thread.set(1) # default value
 et_thread = OptionMenu(Input_frame, variable_thread, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-et_thread.place(x=16, y=400, relwidth=0.2)
+et_thread.place(x=16, y=350, relwidth=0.2)
+
+link_xuat_file = Label(Input_frame, text="Tên file: " + 'result-'+str(date.today())+'.txt')
+link_xuat_file.place(x=120, y=350)
+
+
+enter_new_password = Label(Input_frame, text="Nhập mật khẩu mới nếu cần: ")
+enter_new_password.place(x=16, y=380)
+enter_new_password_entry = Entry(Input_frame)
+enter_new_password_entry.insert(0, r"Beta123ona.")
+enter_new_password_entry.place(x=16, y=400, relwidth=0.8)
 
 # ===========RESULT===================
 lb_tong_cong = Label(screen, text="Tổng cộng: ")
@@ -224,9 +236,10 @@ def start(gp:GologinProfile, thread_data_index: int, mail):
     try:
         start_process(gp, token=gologin_token_entry.get(), reward_link=link_reward_entry.get(), sms_token=five_sim_token_entry.get(), thread_data_index=thread_data_index, mail_account_info=mail)
         # set trang thai cho row
-    except:
+    except Exception as e:
         # set trang thai cho row
         update_record(mail[6], "Lỗi")
+        raise e
     # finally:
     #     if thread_data_list[thread_data_index]:
     #         if thread_data_list[thread_data_index]['driver']:
@@ -342,9 +355,9 @@ def stop():
     for i in range(10):
         if thread_data_list[i]:
             try:
-                if thread_data_list[i]['driver']:
-                    # thread_data_list[i]['driver'].close()
-                    thread_data_list[i]['driver'].quit()
+                # if thread_data_list[i]['driver']:
+                #     # thread_data_list[i]['driver'].close()
+                #     thread_data_list[i]['driver'].quit()
                 if thread_data_list[i]['thread']:
                     thread_data_list[i]['thread'].raise_exception()
             except:
@@ -361,10 +374,16 @@ def stop():
 
 def export_result():
     print("RESULT")
+    osCommandString = 'result-'+str(date.today())+'.txt'
+    os.system(osCommandString)
     # update_record()
 
 def update_record(index: int, status: str):
    table.set(index, column='3', value=status)
+
+def write_file(result):
+    logging.basicConfig(filename='result-'+str(date.today())+'.txt', format="%(message)s")
+    logging.fatal(result)
 
 # ============BUTTON===============
 open_file = Button(Input_frame, text = "Mở file email", bg='#f2f2f2', activeforeground='white', command= open_email_file)
@@ -381,8 +400,6 @@ result_button.place(relx=.7, rely=0.9, relwidth=.2)
 # ============END BUTTON===============
 
 # screen.mainloop()
-
-
 
 # Code open link
 def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: str, thread_data_index: int,mail_account_info = []):
@@ -483,6 +500,12 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
         if len(driver.find_elements(By.ID, 'iSelectProofAction')):
             driver.find_element(By.ID, 'iSelectProofAction').click()
             time.sleep(3)
+
+        if len(driver.find_elements(By.ID, 'iSelectProofError')):
+            # driver.find_element(By.ID, 'iSelectProofAction').click()
+            update_record(mail_account_info[6],  'Requested too many codes today')
+            driver.quit()
+
         start_verify_time = int(time.time())
         print('=======GET CODE=======')
         if len(driver.find_elements(By.ID, 'redeem-checkout-review-confirm')) == 0:
@@ -491,12 +514,22 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
             driver.find_element(By.ID, 'iOttText').send_keys(code)
             time.sleep(3)
             driver.find_element(By.ID, 'iVerifyCodeAction').click()
+
+        if len(driver.find_elements(By.ID, 'iPasswordText')) != 0:
+            update_record(mail_account_info[6], 'Nhập mật khẩu mới')
+            new_pass = enter_new_password_entry.get()
+            print(new_pass)
+            pass_new_input = driver.find_element(By.ID, 'iPasswordText')
+            pass_new_input.send_keys(new_pass)
+            time.sleep(3)
+            driver.find_element(By.ID, 'iPasswordViewAction').click()
+
     # TODO: Xử lý reward
     if len(driver.find_elements(By.CSS_SELECTOR, '.pull-left > .win-color-fg-alert')) != 0: 
         print('Khong du diem')
         update_record(mail_account_info[6], 'Không đủ điểm')
         # TODO: xuất giá trị ra file
-        driver.quit()
+        # driver.quit()
 
     print('=======reward=======')
     update_record(mail_account_info[6], 'Chờ reward')
@@ -646,12 +679,12 @@ def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, ma
             if (result):
                 code = result[0]
                 print(code)
-                driver.close()
+                # driver.close()
                 return code
         time.sleep(6)
         retry_time = retry_time+1
     update_record(mail_account_info[6], 'Lỗi: không lấy được code từ mail phụ')
-    driver.quit()
+    # driver.quit()
     raise('Can not get code from mail hotmail')
 
 # DomekIvyanne@outlook.com|P7C0vUrEfAn|JamesHarrison175@hotmail.com|TXdqs19oy13WZ|jamesharrison175@mailnesia.com
