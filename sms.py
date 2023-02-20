@@ -26,21 +26,9 @@ class Sms(object):
   # }
   def order_5sim(self):
     headers = self.make_headers()
-    # response = json.loads(requests.get('https://5sim.net/v1/user/buy/activation/usa/any/microsoft', headers=headers).content.decode('utf-8'))
-    # print(response)
-    # return 
-    return {
-      "id": 417770758,
-      "phone": "+13055000977",
-      "operator": "virtual32",
-      "product": "microsoft",
-      "price": 15.19,
-      "status": "RECEIVED",
-      "expires": "2023-02-17T17:44:10.308882275Z",
-      "sms": None,
-      "created_at": "2023-02-17T17:34:10.308882275Z",
-      "country": "usa"
-    }
+    response = json.loads(requests.get('https://5sim.net/v1/user/buy/activation/usa/any/microsoft', headers=headers).content.decode('utf-8'))
+    print(response)
+    return response
     
 
   # return code/False

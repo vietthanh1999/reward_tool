@@ -26,7 +26,7 @@ from sms import Sms
 import os
 
 timeout = 50
-sleep_affter_click = 3
+sleep_affter_click = 5
 
 if platform == "linux" or platform == "linux2":
     chrome_driver_path = "./chromedriver"
@@ -200,13 +200,13 @@ def read_file_email():
         count = 0
         for line in file:
             try:
-                # mail_read_list: [mail, pass, mail, pass, mail, status, count]
                 mail_read_list = line.split('|')
                 mail_read_list[0] = mail_read_list[0].lower()
                 mail_read_list[2] = mail_read_list[2].lower()
                 mail_read_list[4] = mail_read_list[4].lower()
 
-                table_mails.append([mail_read_list[0],mail_read_list[1],mail_read_list[2],mail_read_list[3],mail_read_list[4], '', count])
+                # mail_read_list: [mail: 0, pass: 1, mail: 2, pass: 3, mail: 4, status: 5, count: 6, retry: 7]
+                table_mails.append([mail_read_list[0],mail_read_list[1],mail_read_list[2],mail_read_list[3],mail_read_list[4], '', count, 0])
 
                 table.insert(parent='',index='end',iid = count, text='', values=(count + 1, mail_read_list[0], mail_read_list[1]))
                 
@@ -234,19 +234,26 @@ def update_stop_button(state):
 
 def start(gp:GologinProfile, thread_data_index: int, mail):
     try:
+        update_record(mail[6], "Chạy lần "+str(mail[7]))
         start_process(gp, token=gologin_token_entry.get(), reward_link=link_reward_entry.get(), sms_token=five_sim_token_entry.get(), thread_data_index=thread_data_index, mail_account_info=mail)
-        # set trang thai cho row
+        if thread_data_list[thread_data_index]['thread']:
+            try:
+                thread_data_list[thread_data_index]['thread'].raise_exception()
+            except:
+                print('stop')
+        thread_data_list[thread_data_index] = None
     except Exception as e:
-        # set trang thai cho row
-        update_record(mail[6], "Lỗi")
+        if not mail[5]:
+            update_record(mail[6], "Chờ thử lại")
+            mail[5] = ''
+        thread_data_list[thread_data_index]
+        if thread_data_list[thread_data_index]['thread']:
+            try:
+                thread_data_list[thread_data_index]['thread'].raise_exception()
+            except:
+                print('stop')
+        thread_data_list[thread_data_index] = None
         raise e
-    # finally:
-    #     if thread_data_list[thread_data_index]:
-    #         if thread_data_list[thread_data_index]['driver']:
-    #             thread_data_list[thread_data_index]['driver'].close()
-    #         if thread_data_list[thread_data_index]['thread']:
-    #             thread_data_list[thread_data_index]['thread'].join()
-    #         thread_data_list[thread_data_index] = None
 
 class StartThreadWithException(threading.Thread):
     def __init__(self, gp, thread_data_index, mail):
@@ -290,9 +297,14 @@ def update_threading():
         if running < threadNumber:
             # Tìm mail cần chạy
             for mail in table_mails:
-                if mail[5] == '' or mail[5] == None:
-                    mail_data = mail
-                    break
+                if (mail[5] == '' or mail[5] == None):
+                    if mail[7] < int(variable.get()):
+                        mail_data = mail
+                        mail[7] = mail[7] + 1
+                        break
+                    else:
+                        mail[5] = 'Lỗi'
+                        update_record(mail[6], 'Lỗi')
             print(mail_data)
             if mail_data:
                 for thread_data_index in range(10):
@@ -381,8 +393,10 @@ def export_result():
 def update_record(index: int, status: str):
    table.set(index, column='3', value=status)
 
-def write_file(result):
-    logging.basicConfig(filename='result-'+str(date.today())+'.txt', format="%(message)s")
+# Result string:
+# Kind string: Send, Declined, Inpro, Loi
+def write_file(result, kind):
+    logging.basicConfig(filename=kind+'-'+str(date.today())+'.txt', format="%(message)s")
     logging.fatal(result)
 
 # ============BUTTON===============
@@ -401,56 +415,241 @@ result_button.place(relx=.7, rely=0.9, relwidth=.2)
 
 # screen.mainloop()
 
+def get_element(driver, by, data, raise_error=True):
+    retry_time = 0
+    while retry_time < 20:
+        if len(driver.find_elements(by, data)) != 0:
+            return driver.find_element(by, data)
+        time.sleep(1)
+    if raise_error:
+        raise TimeoutException('Timeout')
+    return False
+        
+
 # Code open link
 def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: str, thread_data_index: int,mail_account_info = []):
-    update_record(mail_account_info[6], 'Tạo profile')
-    profile_id = gp.create_profile()
-    gl = GoLogin({'token': token, 'profile_id': profile_id, 'port': getRandomPort()})
-    debugger_address = gl.start()
-    print('main address: ' + str(debugger_address))
-    update_record(mail_account_info[6], 'Mở Gologin')
-    chrome_options = Options()
-    chrome_options.add_experimental_option("debuggerAddress", debugger_address)
-    driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
+    gl = None
+    try:
+        update_record(mail_account_info[6], 'Tạo profile')
+        mail_account_info[5] = 'Tạo profile'
+        profile_id = gp.create_profile()
+        gl = GoLogin({'token': token, 'profile_id': profile_id, 'port': getRandomPort()})
+        debugger_address = gl.start()
+        print('main address: ' + str(debugger_address))
+        update_record(mail_account_info[6], 'Mở Gologin')
+        mail_account_info[5] = 'Mở Gologin'
+        chrome_options = Options()
+        chrome_options.add_experimental_option("debuggerAddress", debugger_address)
+        driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
 
-    thread_data_list[thread_data_index]['driver'] = driver
+        thread_data_list[thread_data_index]['driver'] = driver
 
-    driver.get(reward_link)
-    # try:
-    print("Wait the page reward open!")
-    update_record(mail_account_info[6], 'Mở trang reward')
-    signUpButton: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'start-earning-rewards-link')))
-    print("Page is ready!")
-    WebDriverWait(driver, timeout).until(
-        EC.element_to_be_clickable(signUpButton))
-    print("Sign Up button is ready!")
-    signUpButton.click()
+        driver.get(reward_link)
+        print("Wait the page reward open!")
+        update_record(mail_account_info[6], 'Mở trang reward')
+        mail_account_info[5] = 'Mở trang reward'
+        signUpButton: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'start-earning-rewards-link')))
+        print("Page is ready!")
+        WebDriverWait(driver, timeout).until(
+            EC.element_to_be_clickable(signUpButton))
+        print("Sign Up button is ready!")
+        time.sleep(2)
+        signUpButton.click()
 
-    update_record(mail_account_info[6], 'Nhập mail chính')
-    print("Entering email...")
-    emailInput: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
-    time.sleep(3)
-    emailInput.send_keys(mail_account_info[0])
-    time.sleep(sleep_affter_click)
-    nextButton: WebElement = driver.find_element(
-        By.CSS_SELECTOR, '[type="submit"]')
-    nextButton.click()
+        update_record(mail_account_info[6], 'Nhập mail chính')
+        mail_account_info[5] = 'Nhập mail chính'
+        print("Entering email...")
+        emailInput: WebElement = get_element(driver=driver, by=By.NAME, data='loginfmt')
+        emailInput.send_keys(mail_account_info[0])
+        nextButton = get_element(driver=driver, by=By.CSS_SELECTOR, data='[type="submit"]')
+        nextButton.click()
 
-    time.sleep(sleep_affter_click)
-    update_record(mail_account_info[6], 'Nhập pass mail chính')
-    print("Entering password...")
-    passwordInput: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'passwd')))
-    time.sleep(sleep_affter_click)
-    passwordInput.send_keys(mail_account_info[1])
-    time.sleep(sleep_affter_click)
-    signInButton: WebElement = driver.find_element(By.CSS_SELECTOR, '[type="submit"]')
-    signInButton.click()
+        update_record(mail_account_info[6], 'Nhập pass mail chính')
+        mail_account_info[5] = 'Nhập pass mail chính'
+        print("Entering password...")
+        passwordInput: WebElement = get_element(driver=driver, by=By.NAME, data='passwd')
+        passwordInput.send_keys(mail_account_info[1])
+        signInButton: WebElement = get_element(driver=driver, by=By.CSS_SELECTOR, data='[type="submit"]')
+        signInButton.click()
 
-    # Check passwork error
+        if get_element(driver=driver, by=By.CSS_SELECTOR, data='.pull-left > .win-color-fg-alert'):
+            write_file('|'.join(mail_account_info[0:5])+'|'+'Không đủ điểm', 'Loi')
+            update_record(mail_account_info[6], "không đủ điểm")
+            mail_account_info[5] = 'không đủ điểm'
+            driver.close()
+            driver.quit()
+            if gl:
+                gl.delete_profile_folder()
+            return
 
-    if len(driver.find_elements(By.ID, 'redeem-checkout-review-confirm')) == 0:
-        time.sleep(5)
+        if get_element(driver=driver, by=By.ID, data='redeem-checkout-review-confirm') == False:
+            retry_time = 0
+            while(retry_time < 10):
+                if len(driver.find_elements(By.ID, 'iLandingViewAction')) != 0:
+                    driver.find_elements(By.ID, 'iLandingViewAction')[0].click()
+                    time.sleep(5)
+                if len(driver.find_elements(By.ID, 'iProof0')) != 0:
+                    driver.find_element(By.ID, 'iProof0').click()
+                    time.sleep(5)
+                if len(driver.find_elements(By.ID, 'idSIButton9')) != 0:
+                    driver.find_elements(By.ID, 'idSIButton9')[0].click()
+                    time.sleep(5)
+                if len(driver.find_elements(By.ID, 'passwordError')) != 0:
+                    update_record(mail_account_info[6], 'Sai password')
+                    mail_account_info[5] = 'Sai password'
+                    write_file('|'.join(mail_account_info[0:5])+'|'+'Sai password', 'Loi')
+                    raise 'Sai password'
+                time.sleep(6)
+                retry_time = retry_time + 1
+                if retry_time == 10:
+                    update_record(mail_account_info[6], 'Không xác định được phần tử tiếp')
+                    mail_account_info[5] = ''
+                    write_file('|'.join(mail_account_info[0:5])+'|'+'Không xác định được phần tử tiếp', 'Loi')
+                    raise 'Không xác định được phần tử tiếp'
+                
+            update_record(mail_account_info[6], 'Lấy code từ mail phụ')
+            mail_account_info[5] = 'Lấy code từ mail phụ'
+            if len(driver.find_elements(By.ID, 'iProofEmail')):
+                driver.find_element(By.ID, 'iProofEmail').send_keys(mail_account_info[2])
+                time.sleep(5)
+            if len(driver.find_elements(By.ID, 'iSelectProofAction')):
+                driver.find_element(By.ID, 'iSelectProofAction').click()
+                time.sleep(5)
+            if len(driver.find_elements(By.ID, 'iSelectProofError')):
+                time.sleep(1)
+                driver.find_element(By.ID, 'iSelectProofAlternate').click()
+                time.sleep(5)
+
+            if len(driver.find_elements(By.ID, 'redeem-checkout-review-confirm')) == 0:
+                update_record(mail_account_info[6], 'Get code từ mail phụ')
+                mail_account_info[5] = 'Get code từ mail phụ'
+                code = get_verify_code(gp, token, mail_account_info[2], mail_account_info[3], mail_account_info[4], mail_account_info)
+                driver.find_element(By.ID, 'iOttText').send_keys(code)
+                time.sleep(3)
+                driver.find_element(By.ID, 'iVerifyCodeAction').click()
+                time.sleep(5)
+            
+            if len(driver.find_elements(By.ID, 'iVerifyCodeError')) != 0:
+                update_record(mail_account_info[6], 'Get code từ mail phụ lần 2')
+                mail_account_info[5] = 'Get code từ mail phụ lần 2'
+                code = get_verify_code(gp, token, mail_account_info[2], mail_account_info[3], mail_account_info[4], mail_account_info)
+                driver.find_element(By.ID, 'iOttText').clear()
+                driver.find_element(By.ID, 'iOttText').send_keys(code)
+                time.sleep(3)
+                driver.find_element(By.ID, 'iVerifyCodeAction').click()
+                time.sleep(5)
+            
+                        
+            if len(driver.find_elements(By.ID, 'iVerifyCodeError')) != 0:
+                update_record(mail_account_info[6], 'Get code từ mail phụ lần 3')
+                mail_account_info[5] = 'Get code từ mail phụ lần 3'
+                code = get_verify_code(gp, token, mail_account_info[2], mail_account_info[3], mail_account_info[4], mail_account_info)
+                driver.find_element(By.ID, 'iOttText').clear()
+                driver.find_element(By.ID, 'iOttText').send_keys(code)
+                time.sleep(3)
+                driver.find_element(By.ID, 'iVerifyCodeAction').click()
+                time.sleep(5)
+
+            if len(driver.find_elements(By.ID, 'iVerifyCodeError')) != 0:
+                update_record(mail_account_info[6], 'Lỗi')
+                mail_account_info[5] = 'Lỗi'
+                write_file('|'.join(mail_account_info[0:5])+'|'+'Lỗi lấy code từ mail phụ', 'Loi')
+                raise 'Lỗi lấy code từ mail phụ'
+
+            if len(driver.find_elements(By.ID, 'iPassword')) != 0:
+                update_record(mail_account_info[6], 'Nhập mật khẩu mới')
+                mail_account_info[5] = 'Nhập mật khẩu mới'
+                new_pass = enter_new_password_entry.get()
+                print(new_pass)
+                pass_new_input = driver.find_element(By.ID, 'iPassword')
+                pass_new_input.send_keys(new_pass)
+                mail_account_info[1] = new_pass
+                time.sleep(3)
+                driver.find_element(By.ID, 'iPasswordViewAction').click()
+
+        if len(driver.find_elements(By.CSS_SELECTOR, '.pull-left > .win-color-fg-alert')) != 0: 
+            print('Khong du diem')
+            update_record(mail_account_info[6], 'Không đủ điểm')
+            mail_account_info[5] = 'Không đủ điểm'
+            write_file('|'.join(mail_account_info[0:5])+'|'+'Không đủ điểm', 'Loi')
+            raise 'Không đủ điểm'
+
+        print('=======reward=======')
+        update_record(mail_account_info[6], 'Chờ reward')
+        mail_account_info[5] = 'Chờ reward'
+        confirmRewardButton: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'redeem-checkout-review-confirm')))
+        WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(confirmRewardButton))
+        print("Reward button is ready!")
+        confirmRewardButton.click()
+        sms = Sms({'token': sms_token})
+        update_record(mail_account_info[6], 'Chờ lấy sim 5sim')
+        mail_account_info[5] = 'Chờ lấy sim 5sim'
+        phoneRes = sms.order_5sim()
+        update_record(mail_account_info[6], 'reward')
+        phoneInput: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-fullnumber')))
+        print("Phone input is ready!")
+        phoneInput.send_keys(phoneRes.get('phone', '').replace('+1', ''))
+
+        sendButton: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-validate')))
+        print("Send OTP button is ready!")
+        sendButton.click()
+        update_record(mail_account_info[6], 'Chờ lấy code 5sim')
+        mail_account_info[5] = 'Chờ lấy code 5sim'
+        code = sms.get_code_5sim(phoneRes.get('id', ''))
+
+        codeInput: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-code')))
+        print("Enter your 6-digit code:")
+        codeInput.send_keys(code)
+        completeMyOrderBtn: WebElement = WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-confirm')))
+        WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(completeMyOrderBtn))
+        print("completeMyOrderBtn is ready!")
+        update_record(mail_account_info[6], 'Reward...')
+        mail_account_info[5] = 'Reward...'
+        completeMyOrderBtn.click()
+    except TimeoutException:
+        mail_account_info[5] = ''
+        update_record(mail_account_info[6], 'Chờ thử lại')
+        driver.close()
+        driver.quit()
+        gl.delete_profile_folder()
+    except Exception as e:
+        if gl:
+            gl.delete_profile_folder()
+        raise e
+
+def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, mail_verify: str,mail_account_info = []):
+    # hotmail login link: https://outlook.live.com/owa/?nlp=1
+    gl = None
+    try:
+        update_record(mail_account_info[6], 'Tạo profile cho mail phụ')
+        mail_account_info[5] = 'Tạo profile cho mail phụ'
+        profile_id = gp.create_profile()
+        gl = GoLogin({'token': token, 'profile_id': profile_id,  'port': getRandomPort()})
+        debugger_address = gl.start()
+        print(debugger_address)
+        update_record(mail_account_info[6], 'Mở trình duyệt cho mail phụ')
+        mail_account_info[5] = 'Mở trình duyệt cho mail phụ'
+        chrome_options = Options()
+        chrome_options.add_experimental_option("debuggerAddress", debugger_address)
+        driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
+        driver.get('https://outlook.live.com/owa/?nlp=1')
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
+        update_record(mail_account_info[6], 'Login mail phụ')
+        mail_account_info[5] = 'Login mail phụ'
+        driver.find_element(By.NAME, 'loginfmt').send_keys(mail)
+        time.sleep(2)
+        driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
+        time.sleep(3)
+        driver.find_element(By.NAME, 'passwd').send_keys(password)
+        time.sleep(2)
+        driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
+
         retry_time = 0
         allow_continue = False
         step = ''
@@ -471,23 +670,22 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
             elif len(driver.find_elements(By.ID, 'passwordError')) != 0:
                 # TODO: Xử lý sai pass
                 print('Sai password')
-                update_record(mail_account_info[6], 'Sai password')
+                update_record(mail_account_info[6], 'Lỗi: Sai pass mail phụ')
+                mail_account_info[5] = 'Lỗi: Sai pass mail phụ'
+                # driver.close()
                 raise 'Sai password'
             time.sleep(6)
             retry_time = retry_time + 1
 
         if (allow_continue == False):
-            update_record(mail_account_info[6], 'Lỗi: Không xác định được phần tử tiếp theo')
-            logging.error('Lỗi: Không xác định được phần tử tiếp theo' + str(mail_account_info))
             print('false at allow_continue')
             raise('false at allow_continue')
-            
+        
         if (step == 'landingiew'):
             print('Landing View V2')
             driver.find_elements(By.ID, 'iLandingViewAction')[0].click()
             time.sleep(3)
 
-        update_record(mail_account_info[6], 'Chờ lấy code từ mail phụ')
         if (step == 'staysigned'):
             print(len(driver.find_elements(By.ID, 'idSIButton9')))
             driver.find_elements(By.ID, 'idSIButton9')[0].click()
@@ -496,206 +694,58 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
             driver.find_element(By.ID, 'iProof0').click()
             time.sleep(3)
         if len(driver.find_elements(By.ID, 'iProofEmail')):
-            driver.find_element(By.ID, 'iProofEmail').send_keys(mail_account_info[2])
+            driver.find_element(By.ID, 'iProofEmail').send_keys(mail_verify)
             time.sleep(3)
         if len(driver.find_elements(By.ID, 'iSelectProofAction')):
             driver.find_element(By.ID, 'iSelectProofAction').click()
             time.sleep(3)
-
-        if len(driver.find_elements(By.ID, 'iSelectProofError')):
-            # driver.find_element(By.ID, 'iSelectProofAction').click()
-            update_record(mail_account_info[6],  'Requested too many codes today')
-            thread_data_list[thread_data_index]['thread'].raise_exception()
-            driver.quit()
-
         start_verify_time = int(time.time())
-        print('=======GET CODE=======')
-        if len(driver.find_elements(By.ID, 'redeem-checkout-review-confirm')) == 0:
-            update_record(mail_account_info[6], 'Get code từ mail phụ')
-            code = get_verify_code(gp, token, mail_account_info[2], mail_account_info[3], mail_account_info[4], mail_account_info)
+        update_record(mail_account_info[6], 'Chờ lấy code từ mailnesia')
+        mail_account_info[5] = 'Chờ lấy code từ mailnesia'
+        code = get_code_from_mailnesia(mail_verify, 0)
+        update_record(mail_account_info[6], 'Code mailnesia: ' + str(code))
+        mail_account_info[5] = 'Code mailnesia: ' + str(code)
+        if  len(driver.find_elements(By.ID, 'iOttText')):
+            time.sleep(3)
             driver.find_element(By.ID, 'iOttText').send_keys(code)
             time.sleep(3)
             driver.find_element(By.ID, 'iVerifyCodeAction').click()
-
-        if len(driver.find_elements(By.ID, 'iPasswordText')) != 0:
-            update_record(mail_account_info[6], 'Nhập mật khẩu mới')
-            new_pass = enter_new_password_entry.get()
-            print(new_pass)
-            pass_new_input = driver.find_element(By.ID, 'iPasswordText')
-            pass_new_input.send_keys(new_pass)
+            # Chờ cho đến khi có
+        if(len(driver.find_elements(By.ID, 'idSIButton9'))):
+            yButton: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.ID, 'idSIButton9')))
             time.sleep(3)
-            driver.find_element(By.ID, 'iPasswordViewAction').click()
-
-    # TODO: Xử lý reward
-    if len(driver.find_elements(By.CSS_SELECTOR, '.pull-left > .win-color-fg-alert')) != 0: 
-        print('Khong du diem')
-        update_record(mail_account_info[6], 'Không đủ điểm')
-        # TODO: xuất giá trị ra file
-        # driver.quit()
-
-    print('=======reward=======')
-    update_record(mail_account_info[6], 'Chờ reward')
-    confirmRewardButton: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'redeem-checkout-review-confirm')))
-    WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(confirmRewardButton))
-    print("Reward button is ready!")
-    confirmRewardButton.click()
-    sms = Sms({'token': sms_token})
-    update_record(mail_account_info[6], 'Chờ lấy sim 5sim')
-    phoneRes = sms.order_5sim()
-    update_record(mail_account_info[6], 'reward')
-    phoneInput: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-fullnumber')))
-    print("Phone input is ready!")
-    phoneInput.send_keys(phoneRes.get('phone', '').replace('+1', ''))
-
-    sendButton: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-validate')))
-    print("Send OTP button is ready!")
-    sendButton.click()
-    update_record(mail_account_info[6], 'Chờ lấy code 5sim')
-    code = sms.get_code_5sim(phoneRes.get('id', ''))
-
-    codeInput: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-code')))
-    print("Enter your 6-digit code:")
-    codeInput.send_keys(code)
-    completeMyOrderBtn: WebElement = WebDriverWait(driver, timeout).until(
-        EC.presence_of_element_located((By.ID, 'redeem-checkout-challenge-confirm')))
-    WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(completeMyOrderBtn))
-    print("completeMyOrderBtn is ready!")
-    update_record(mail_account_info[6], 'Reward...')
-    completeMyOrderBtn.click()
-
-        # elif ()
-        # elif():
-        #     # TODO: Xử lý trường hợp mail lock
-        # elif (driver.find_elements(By.CSS_SELECTOR, '.pull-left > .win-color-fg-alert').count != 0):
-        #     print('Khong du diem')
-        #     driver.close()
-        #     raise 'Khong du diem'
-
+            yButton.click()
+        update_record(mail_account_info[6], 'Chờ lấy code từ mail phụ')
+        mail_account_info[5] = 'Chờ lấy code từ mail phụ'
+        WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[role="listbox"]')))
+        driver.find_element(By.ID, 'Pivot84-Tab1').click()
+        time.sleep(3)
         
-        # get_verify_code()
-    # except TimeoutException:
-    #     # TODO: Xử lý trường hợp proxy chậm
-    #     print("Loading took too much time!")
-    # except:
-    #     print("Error to login")
+        retry_time = 0
+        while(retry_time < 15):
+            list_mail = driver.find_elements(By.CLASS_NAME, 'hcptT')
+            print(list_mail)
+            for mail in list_mail:
+                result = re.findall(r'[0-9]{7}', mail.get_attribute('aria-label'))
+                if (result):
+                    code = result[0]
+                    print(code)
+                    driver.close()
+                    driver.quit()
+                    gl.delete_profile_folder()
+                    return code
+            time.sleep(6)
+            retry_time = retry_time+1
+        update_record(mail_account_info[6], 'Lỗi: không lấy được code từ mail phụ')
+        mail_account_info[5] = 'Lỗi: không lấy được code từ mail phụ'
+        driver.close()
+        driver.quit()
+        gl.delete_profile_folder()
+        raise('Can not get code from mail hotmail')
+    except Exception as e:
+        if gl:
+            driver.close()
+            driver.quit()
+            gl.delete_profile_folder()
+        raise e
 
-def get_verify_code(gp: GologinProfile, token: str, mail: str, password: str, mail_verify: str,mail_account_info = []):
-    # hotmail login link: https://outlook.live.com/owa/?nlp=1
-    update_record(mail_account_info[6], 'Tạo profile cho mail phụ')
-    profile_id = gp.create_profile()
-    gl = GoLogin({'token': token, 'profile_id': profile_id,  'port': getRandomPort()})
-    debugger_address = gl.start()
-    print(debugger_address)
-    update_record(mail_account_info[6], 'Mở trình duyệt cho mail phụ')
-    chrome_options = Options()
-    chrome_options.add_experimental_option("debuggerAddress", debugger_address)
-    driver = webdriver.Chrome(executable_path=chrome_driver_path, options=chrome_options)
-    driver.get('https://outlook.live.com/owa/?nlp=1')
-    WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.NAME, 'loginfmt')))
-    update_record(mail_account_info[6], 'Login mail phụ')
-    driver.find_element(By.NAME, 'loginfmt').send_keys(mail)
-    time.sleep(2)
-    driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
-    time.sleep(3)
-    driver.find_element(By.NAME, 'passwd').send_keys(password)
-    time.sleep(2)
-    driver.find_element(By.CSS_SELECTOR, '[type="submit"]').click()
-
-    retry_time = 0
-    allow_continue = False
-    step = ''
-    while(retry_time < 10):
-        if len(driver.find_elements(By.ID, 'iLandingViewAction')) != 0:
-            allow_continue = True
-            print(driver.find_elements(By.ID, 'iLandingViewAction').count)
-            step = 'landingiew'
-            break
-        elif len(driver.find_elements(By.ID, 'iProof0')) != 0:
-            allow_continue = True
-            step = 'chosemailverify'
-            break
-        elif len(driver.find_elements(By.ID, 'idSIButton9')) != 0:
-            allow_continue = True
-            step = 'staysigned'
-            break
-        elif len(driver.find_elements(By.ID, 'passwordError')) != 0:
-            # TODO: Xử lý sai pass
-            print('Sai password')
-            update_record(mail_account_info[6], 'Lỗi: Sai pass mail phụ')
-            # driver.close()
-            raise 'Sai password'
-        time.sleep(6)
-        retry_time = retry_time + 1
-
-    if (allow_continue == False):
-        print('false at allow_continue')
-        raise('false at allow_continue')
-    
-    if (step == 'landingiew'):
-        print('Landing View V2')
-        driver.find_elements(By.ID, 'iLandingViewAction')[0].click()
-        time.sleep(3)
-
-    if (step == 'staysigned'):
-        print(len(driver.find_elements(By.ID, 'idSIButton9')))
-        driver.find_elements(By.ID, 'idSIButton9')[0].click()
-    
-    if len(driver.find_elements(By.ID, 'iProof0')):
-        driver.find_element(By.ID, 'iProof0').click()
-        time.sleep(3)
-    if len(driver.find_elements(By.ID, 'iProofEmail')):
-        driver.find_element(By.ID, 'iProofEmail').send_keys(mail_verify)
-        time.sleep(3)
-    if len(driver.find_elements(By.ID, 'iSelectProofAction')):
-        driver.find_element(By.ID, 'iSelectProofAction').click()
-        time.sleep(3)
-    start_verify_time = int(time.time())
-    update_record(mail_account_info[6], 'Chờ lấy code từ mailnesia')
-    code = get_code_from_mailnesia(mail_verify, 0)
-    update_record(mail_account_info[6], 'Code mailnesia: ' + str(code))
-    if  len(driver.find_elements(By.ID, 'iOttText')):
-        time.sleep(3)
-        driver.find_element(By.ID, 'iOttText').send_keys(code)
-        time.sleep(3)
-        driver.find_element(By.ID, 'iVerifyCodeAction').click()
-        # Chờ cho đến khi có
-    if(len(driver.find_elements(By.ID, 'idSIButton9'))):
-        yButton: WebElement = WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.ID, 'idSIButton9')))
-        time.sleep(3)
-        yButton.click()
-    update_record(mail_account_info[6], 'Chờ lấy code từ mail phụ')
-    WebDriverWait(driver, timeout).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[role="listbox"]')))
-    driver.find_element(By.ID, 'Pivot84-Tab1').click()
-    time.sleep(3)
-    
-    retry_time = 0
-    while(retry_time < 15):
-        list_mail = driver.find_elements(By.CLASS_NAME, 'hcptT')
-        print(list_mail)
-        for mail in list_mail:
-            result = re.findall(r'[0-9]{7}', mail.get_attribute('aria-label'))
-            if (result):
-                code = result[0]
-                print(code)
-                # driver.close()
-                return code
-        time.sleep(6)
-        retry_time = retry_time+1
-    update_record(mail_account_info[6], 'Lỗi: không lấy được code từ mail phụ')
-    driver.quit()
-    gl.delete_profile_folder()
-    raise('Can not get code from mail hotmail')
-
-# DomekIvyanne@outlook.com|P7C0vUrEfAn|JamesHarrison175@hotmail.com|TXdqs19oy13WZ|jamesharrison175@mailnesia.com
-# start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
-# mail_account_info=['allemandHaasini@outlook.com', 'Beta123ona.', 'busterFraise154@hotmail.com', 'NIfgd15k19YB', 'busterfraise154@mailnesia.com'])
-
-# start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
-# mail_account_info=['domekIvyanne@outlook.com', 'P7C0vUrEfAn', 'jamesHarrison175@hotmail.com', 'TXdqs19oy13WZ', 'jamesharrison175@mailnesia.com'])
-
-# start_process(gp, token, reward_link="https://rewards.microsoft.com/redeem/checkout?productId=000800000041", 
-# mail_account_info=['lemmerkhayq@outlook.com', 'Beta123ona.', 'kellyBurgos187@hotmail.com', 'AVwsd17h17MV', 'kellyburgos187@mailnesia.com'])
