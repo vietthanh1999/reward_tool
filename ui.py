@@ -521,11 +521,11 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
                 update_record(mail_account_info[6], 'Lấy code từ mail phụ')
                 mail_account_info[5] = 'Lấy code từ mail phụ'
                 get_element(driver=driver, by=By.ID, data='iProofEmail').send_keys(mail_account_info[2])
-                time.sleep(1)
+                time.sleep(2)
                 get_element(driver=driver, by=By.ID, data='iSelectProofAction').click()
-                time.sleep(1)
+                time.sleep(2)
                 tmp = get_element(driver=driver, by=By.ID, data='iSelectProofError', raise_error=False)
-                time.sleep(1)
+                time.sleep(2)
                 if tmp:
                     tmp.click()
                     return
@@ -573,6 +573,7 @@ def start_process(gp: GologinProfile, token: str, reward_link: str, sms_token: s
                     mail_account_info[1] = new_pass
                     time.sleep(3)
                     driver.find_element(By.ID, 'iPasswordViewAction').click()
+                    
 
         if get_element(driver=driver, by=By.CSS_SELECTOR, data='.pull-left > .win-color-fg-alert', raise_error=False):
             print('Khong du diem')
